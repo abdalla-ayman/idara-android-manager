@@ -1,28 +1,29 @@
 import { useApp } from '../App';
-import { Minus, Square, X } from 'lucide-react';
 
 export default function TitleBar() {
   const { api, isElectron } = useApp();
 
   return (
     <div className="titlebar">
-      <div className="titlebar__logo">
-        <div className="titlebar__logo-icon">إ</div>
-        <span className="titlebar__title">إدارة</span>
+      <div className="titlebar__traffic">
+        <button
+          className="titlebar__dot titlebar__dot--close"
+          onClick={() => isElectron && api.close()}
+          aria-label="Close"
+        />
+        <button
+          className="titlebar__dot titlebar__dot--min"
+          onClick={() => isElectron && api.minimize()}
+          aria-label="Minimize"
+        />
+        <button
+          className="titlebar__dot titlebar__dot--max"
+          onClick={() => isElectron && api.maximize()}
+          aria-label="Maximize"
+        />
       </div>
-      {isElectron && (
-        <div className="titlebar__controls">
-          <button className="titlebar__btn" onClick={() => api.minimize()} aria-label="Minimize">
-            <Minus size={14} />
-          </button>
-          <button className="titlebar__btn" onClick={() => api.maximize()} aria-label="Maximize">
-            <Square size={12} />
-          </button>
-          <button className="titlebar__btn titlebar__btn--close" onClick={() => api.close()} aria-label="Close">
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <span className="titlebar__title">إدارة — android manager</span>
+      <span className="titlebar__version">v1.0.0</span>
     </div>
   );
 }

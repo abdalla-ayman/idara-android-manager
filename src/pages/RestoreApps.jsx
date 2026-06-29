@@ -9,10 +9,15 @@ export default function RestoreApps() {
   const { t } = useTranslation();
   const { api, showToast, activeDevice, deviceConnected } = useApp();
 
-  const [deletions, setDeletions] = useState([]);
+  // Source of truth: what ADB says is actually restorable right now
+  const [restorableApps, setRestorableApps] = useState([]);
+  // Metadata overlay: lock timers / history from our deletion store
+  const [deletionMeta, setDeletionMeta] = useState({});
+
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [restoring, setRestoring] = useState(false);
+
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [password, setPassword] = useState('');
@@ -20,23 +25,42 @@ export default function RestoreApps() {
   const [pwError, setPwError] = useState('');
   const [now, setNow] = useState(Date.now());
 
-  const loadDeletions = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.deletion.getAll();
-      setDeletions(data.filter((d) => d.status === 'deleted'));
+      // Run both in parallel; ADB list only makes sense when a device is connected
+      const [adbResult, deletions] = await Promise.all([
+        deviceConnected
+          ? api.adb.getRestorable({ serial: activeDevice })
+          : Promise.resolve({ success: true, apps: [] }),
+        api.deletion.getAll(),
+      ]);
+
+      // Build a metadata map from deletion records (keyed by package)
+      const meta = {};
+      for (const d of deletions) {
+        if (d.status === 'deleted') meta[d.package] = d;
+      }
+      setDeletionMeta(meta);
+
+      if (adbResult.success) {
+        setRestorableApps(adbResult.apps.filter((a) => a.isSystem));
+      } else {
+        setRestorableApps([]);
+        if (deviceConnected) showToast(adbResult.error || t('common.error'), 'error');
+      }
     } catch {
       showToast(t('common.error'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [api, showToast, t]);
+  }, [api, activeDevice, deviceConnected, showToast, t]);
 
   useEffect(() => {
-    loadDeletions();
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, [loadDeletions]);
+    load();
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, [load]);
 
   const toggleSelect = (pkg) => {
     setSelected((prev) => {
@@ -58,11 +82,10 @@ export default function RestoreApps() {
     };
   };
 
-  // Fraction of the lock window already elapsed (0–100).
-  const lockProgress = (app) => {
-    const remaining = getTimeRemaining(app.lockExpiresAt);
+  const lockProgress = (meta) => {
+    const remaining = getTimeRemaining(meta.lockExpiresAt);
     if (!remaining) return 100;
-    const window = app.recoveryMs || (app.lockExpiresAt - (app.deletedAt || app.lockExpiresAt - remaining.total));
+    const window = meta.recoveryMs || (meta.lockExpiresAt - (meta.deletedAt || meta.lockExpiresAt - remaining.total));
     if (!window) return 0;
     return Math.max(0, Math.min(100, (1 - remaining.total / window) * 100));
   };
@@ -71,8 +94,11 @@ export default function RestoreApps() {
     if (selected.size === 0) return;
     if (!deviceConnected) { showToast(t('device.noneTitle'), 'warning'); return; }
 
-    const apps = deletions.filter((d) => selected.has(d.package));
-    const hasLocked = apps.some((d) => d.isLocked && getTimeRemaining(d.lockExpiresAt));
+    const targets = restorableApps.filter((a) => selected.has(a.package));
+    const hasLocked = targets.some((a) => {
+      const meta = deletionMeta[a.package];
+      return meta?.isLocked && getTimeRemaining(meta.lockExpiresAt);
+    });
     if (hasLocked) {
       if (await api.password.exists()) { setShowPasswordModal(true); return; }
       showToast(t('restore.locked'), 'warning');
@@ -94,22 +120,30 @@ export default function RestoreApps() {
   };
 
   const executeRestore = async () => {
-    const apps = deletions.filter((d) => selected.has(d.package));
+    const targets = restorableApps.filter((a) => selected.has(a.package));
     setRestoring(true);
     let ok = 0;
-    for (const app of apps) {
+    for (const app of targets) {
       try {
         const res = await api.adb.restore({ packageName: app.package, serial: activeDevice });
-        if (res.success) { await api.deletion.updateStatus(app.package, 'restored'); ok++; }
+        if (res.success) {
+          ok++;
+          // Update deletion record status if we have one
+          if (deletionMeta[app.package]) {
+            await api.deletion.updateStatus(app.package, 'restored');
+          }
+        }
       } catch { /* keep going */ }
     }
     setRestoring(false);
     setSelected(new Set());
-    showToast(`${t('restore.complete')}: ${ok}/${apps.length}`, ok === apps.length ? 'success' : 'warning');
-    loadDeletions();
+    showToast(`${t('restore.complete')}: ${ok}/${targets.length}`, ok === targets.length ? 'success' : 'warning');
+    load();
   };
 
-  const lockedApps = deletions.filter((d) => d.isLocked && getTimeRemaining(d.lockExpiresAt));
+  const lockedApps = restorableApps
+    .map((a) => deletionMeta[a.package])
+    .filter((meta) => meta?.isLocked && getTimeRemaining(meta.lockExpiresAt));
 
   return (
     <>
@@ -119,7 +153,7 @@ export default function RestoreApps() {
           <p className="page-header__subtitle">{t('restore.subtitle')}</p>
         </div>
 
-        {!deviceConnected && deletions.length > 0 && (
+        {!deviceConnected && (
           <div className="callout callout--warning" style={{ marginBottom: 20 }}>
             <Smartphone size={18} style={{ flexShrink: 0 }} />
             <span>{t('restore.needDevice')}</span>
@@ -128,19 +162,28 @@ export default function RestoreApps() {
 
         {loading ? (
           <div className="empty-state"><div className="spinner spinner--lg" /></div>
-        ) : deletions.length === 0 ? (
+        ) : restorableApps.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state__icon">✨</div>
             <h3 className="empty-state__title">{t('restore.noApps')}</h3>
-            <p className="empty-state__desc">{t('restore.noAppsDesc')}</p>
+            <p className="empty-state__desc">{deviceConnected ? t('restore.noAppsDesc') : t('restore.needDevice')}</p>
           </div>
         ) : (
           <>
+            <div className="toolbar" style={{ marginBottom: 14 }}>
+              <span className="toolbar__count">
+                <strong>{restorableApps.length}</strong> {t('restore.restorable')}
+              </span>
+            </div>
+
             <div className="app-grid">
-              {deletions.map((app, i) => {
-                const remaining = app.isLocked ? getTimeRemaining(app.lockExpiresAt) : null;
+              {restorableApps.map((app, i) => {
+                const meta = deletionMeta[app.package];
+                const remaining = meta?.isLocked ? getTimeRemaining(meta.lockExpiresAt) : null;
                 const isLocked = !!remaining;
                 const isSel = selected.has(app.package);
+                const trackedByApp = !!meta;
+
                 return (
                   <motion.div
                     key={app.package}
@@ -162,9 +205,17 @@ export default function RestoreApps() {
                         </div>
                       )}
                     </div>
-                    {isLocked
-                      ? <span className="app-card__badge app-card__badge--locked"><Lock size={10} /> {t('restore.locked')}</span>
-                      : <span className="app-card__badge app-card__badge--deleted">{t('restore.deleted')}</span>}
+                    <div className="app-card__badges">
+                      <span className={`app-card__badge app-card__badge--${app.isSystem ? 'system' : 'user'}`}>
+                        {app.isSystem ? t('apps.system') : t('apps.user')}
+                      </span>
+                      {isLocked
+                        ? <span className="app-card__badge app-card__badge--locked"><Lock size={10} /> {t('restore.locked')}</span>
+                        : trackedByApp
+                          ? <span className="app-card__badge app-card__badge--deleted">{t('restore.deleted')}</span>
+                          : <span className="app-card__badge app-card__badge--deleted">{t('restore.external')}</span>
+                      }
+                    </div>
                   </motion.div>
                 );
               })}
@@ -176,7 +227,7 @@ export default function RestoreApps() {
                   initial={{ opacity: 0, y: 24, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: 24, x: '-50%' }}>
                   <span className="action-bar__count"><strong>{selected.size}</strong> {t('apps.selected')}</span>
                   <button className="btn btn--ghost btn--sm" onClick={() => setSelected(new Set())}>{t('apps.clear')}</button>
-                  <button className="btn btn--success" onClick={handleRestore} disabled={restoring}>
+                  <button className="btn btn--success" onClick={handleRestore} disabled={restoring || !deviceConnected}>
                     {restoring ? <Loader2 className="spin-icon" size={16} /> : <RotateCcw size={16} />}
                     {t('restore.restore')}
                   </button>
@@ -226,11 +277,11 @@ export default function RestoreApps() {
             </div>
             {lockedApps.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--success-400)', marginTop: 16 }}>{t('password.unlocked')}</p>
-            ) : lockedApps.map((app) => {
-              const remaining = getTimeRemaining(app.lockExpiresAt);
+            ) : lockedApps.map((meta) => {
+              const remaining = getTimeRemaining(meta.lockExpiresAt);
               return (
-                <div key={app.package} style={{ marginTop: 16 }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>{app.name}</p>
+                <div key={meta.package} style={{ marginTop: 16 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>{meta.name}</p>
                   <div className="timer" style={{ justifyContent: 'center' }}>
                     <Segment value={remaining.hours} label="HRS" />
                     <span className="timer__separator">:</span>
@@ -239,7 +290,7 @@ export default function RestoreApps() {
                     <Segment value={remaining.seconds} label="SEC" />
                   </div>
                   <div className="progress" style={{ marginTop: 16 }}>
-                    <div className="progress__fill" style={{ width: `${lockProgress(app)}%` }} />
+                    <div className="progress__fill" style={{ width: `${lockProgress(meta)}%` }} />
                   </div>
                 </div>
               );

@@ -127,7 +127,9 @@
     "deleted": "محذوف",
     "restored": "مُستعاد",
     "remaining": "متبقٍّ",
-    "enterPassword": "أدخل كلمة المرور للاستعادة"
+    "enterPassword": "أدخل كلمة المرور للاستعادة",
+    "restorable": "تطبيقات يمكن استعادتها",
+    "external": "ADB"
   },
   "settings": {
     "title": "الإعدادات",
@@ -143,6 +145,9 @@
     "clearHistoryDesc": "إزالة التطبيقات المُستعادة من السجل. تبقى التطبيقات غير المثبّتة لتتمكن من استعادتها.",
     "records": "{{n}} سجل",
     "about": "حول إدارة",
+    "theme": "المظهر",
+    "themeTerminal": "طرفية — داكن، أحادي",
+    "themeEditorial": "تحريري — فاتح، خطوط كلاسيكية",
     "version": "الإصدار",
     "adbStatus": "حالة ADB",
     "adbRestarted": "تمت إعادة تشغيل خادم ADB",

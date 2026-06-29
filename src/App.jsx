@@ -66,6 +66,14 @@ const mockApi = {
     }),
     uninstall: async () => { await wait(500); return { success: true, output: 'Success' }; },
     restore: async () => { await wait(400); return { success: true, output: 'Success' }; },
+    getRestorable: async () => ({
+      success: true,
+      apps: [
+        { package: 'com.android.chrome', name: 'Chrome', isSystem: true },
+        { package: 'com.android.vending', name: 'Google Play Store', isSystem: true },
+        { package: 'com.google.android.gms', name: 'Google Play Services', isSystem: true },
+      ],
+    }),
     disable: async () => { await wait(300); return { success: true, output: 'Success' }; },
     enable: async () => { await wait(300); return { success: true, output: 'Success' }; },
     disconnect: async () => ({ success: true }),
@@ -148,18 +156,29 @@ export default function App() {
   const { i18n } = useTranslation();
   const [currentPage, setCurrentPage] = useState('loading');
   const [language, setLanguage] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem('idara_theme') || 'terminal');
 
   const [devices, setDevices] = useState([]);        // usable (status === 'device')
   const [deviceStatus, setDeviceStatus] = useState('none'); // none | connected | unauthorized | offline
   const [activeDevice, setActiveDevice] = useState(null);   // serial
   const [deviceInfo, setDeviceInfo] = useState(null);
 
+  const [restorableCount, setRestorableCount] = useState(0);
   const [toast, setToast] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
   const confirmResolve = useRef(null);
   const devSigRef = useRef('');
 
   const deviceConnected = deviceStatus === 'connected';
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('idara_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((t) => (t === 'terminal' ? 'editorial' : 'terminal'));
+  }, []);
 
   const applyLanguage = (lang) => {
     setLanguage(lang);
@@ -210,6 +229,16 @@ export default function App() {
           : result.devices?.some((d) => d.status === 'offline') ? 'offline'
             : 'none';
       setDeviceStatus(status); // no-op if unchanged
+
+      // Refresh restorable count whenever device state changes
+      if (ready.length > 0) {
+        const serial = ready[0]?.id;
+        api.adb.getRestorable({ serial }).then((r) => {
+          if (r.success) setRestorableCount(r.apps.filter((a) => a.isSystem).length);
+        }).catch(() => {});
+      } else {
+        setRestorableCount(0);
+      }
     };
 
     check();
@@ -287,6 +316,8 @@ export default function App() {
     currentPage, setCurrentPage,
     showToast, confirm, disconnectDevice,
     isEmulator, isElectron,
+    theme, toggleTheme,
+    restorableCount,
   };
 
   const overlays = (

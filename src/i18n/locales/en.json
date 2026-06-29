@@ -127,7 +127,9 @@
     "deleted": "Uninstalled",
     "restored": "Restored",
     "remaining": "remaining",
-    "enterPassword": "Enter Password to Restore"
+    "enterPassword": "Enter Password to Restore",
+    "restorable": "apps can be restored",
+    "external": "ADB"
   },
   "settings": {
     "title": "Settings",
@@ -143,6 +145,9 @@
     "clearHistoryDesc": "Remove restored apps from history. Apps still uninstalled are kept so you can restore them.",
     "records": "{{n}} records",
     "about": "About إدارة",
+    "theme": "Theme",
+    "themeTerminal": "Terminal — dark, monospace",
+    "themeEditorial": "Editorial — light, serif",
     "version": "Version",
     "adbStatus": "ADB Status",
     "adbRestarted": "ADB server restarted",

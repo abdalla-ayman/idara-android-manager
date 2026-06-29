@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useApp } from '../App';
-import { Globe, Trash2, KeyRound, RefreshCw, Wifi, WifiOff, ChevronRight, Smartphone, Unplug } from 'lucide-react';
+import { Globe, Trash2, KeyRound, RefreshCw, Wifi, WifiOff, ChevronRight, Smartphone, Unplug, Sun, Moon } from 'lucide-react';
 
 const APP_VERSION = '1.0.0';
 
 export default function Settings() {
   const { t } = useTranslation();
-  const { api, language, changeLanguage, showToast, confirm, disconnectDevice, deviceConnected, deviceInfo, activeDevice } = useApp();
+  const { api, language, changeLanguage, showToast, confirm, disconnectDevice, deviceConnected, deviceInfo, activeDevice, theme, toggleTheme } = useApp();
 
   const [hasPassword, setHasPassword] = useState(false);
   const [historyCount, setHistoryCount] = useState(0);
@@ -63,6 +63,18 @@ export default function Settings() {
       {/* General */}
       <div className="settings-section">
         <h3 className="settings-section__title">{t('settings.general')}</h3>
+        <button className="settings-item settings-item--button" onClick={toggleTheme}>
+          <span className="settings-item__label">
+            <span className="settings-item__label-icon">
+              {theme === 'terminal' ? <Moon size={18} /> : <Sun size={18} />}
+            </span>
+            <span>
+              <span className="settings-item__label-text">{t('settings.theme')}</span>
+              <span className="settings-item__label-desc">{theme === 'terminal' ? t('settings.themeTerminal') : t('settings.themeEditorial')}</span>
+            </span>
+          </span>
+          <span className="chip chip--primary">{theme === 'terminal' ? '◼ Terminal' : '◻ Editorial'}</span>
+        </button>
         <button className="settings-item settings-item--button" onClick={handleLanguageToggle}>
           <span className="settings-item__label">
             <span className="settings-item__label-icon"><Globe size={18} /></span>
@@ -149,7 +161,7 @@ export default function Settings() {
       <div className="settings-section">
         <h3 className="settings-section__title">{t('settings.about')}</h3>
         <div className="card about-card">
-          <div className="about-card__logo">A</div>
+          <div className="about-card__logo">إ</div>
           <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{t('app.fullName')}</h3>
           <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 4 }}>{t('app.tagline')}</p>
           <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>{t('settings.version')} {APP_VERSION}</p>

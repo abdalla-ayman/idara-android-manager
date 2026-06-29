@@ -228,6 +228,34 @@ function registerIpcHandlers() {
     return runAdbForDevice(serial, ['shell', 'cmd', 'package', 'install-existing', packageName]);
   });
 
+  // ── ADB: get all packages restorable via install-existing ──
+  // "Restorable" = appeared in pm list packages -u (ever installed for user 0)
+  //                but is absent from pm list packages (currently installed).
+  ipcMain.handle('adb:getRestorable', async (_e, { serial } = {}) => {
+    const [allIncUninstalled, currentlyInstalled, systemAll] = await Promise.all([
+      runAdbForDevice(serial, ['shell', 'pm', 'list', 'packages', '-u', '--user', '0']),
+      runAdbForDevice(serial, ['shell', 'pm', 'list', 'packages', '--user', '0']),
+      runAdbForDevice(serial, ['shell', 'pm', 'list', 'packages', '-u', '-s', '--user', '0']),
+    ]);
+
+    if (!allIncUninstalled.success) return { success: false, error: allIncUninstalled.error };
+
+    const everInstalledSet = parsePackageList(allIncUninstalled.output);
+    const currentSet = currentlyInstalled.success ? parsePackageList(currentlyInstalled.output) : new Set();
+    const systemSet = systemAll.success ? parsePackageList(systemAll.output) : new Set();
+
+    const restorable = [...everInstalledSet]
+      .filter((pkg) => !currentSet.has(pkg))
+      .map((pkg) => ({
+        package: pkg,
+        name: resolveAppName(pkg),
+        isSystem: systemSet.has(pkg),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    return { success: true, apps: restorable };
+  });
+
   // ── ADB: disable / enable (non-destructive alternative to uninstall) ──
   ipcMain.handle('adb:disable', async (_e, { packageName, serial }) => {
     return runAdbForDevice(serial, ['shell', 'pm', 'disable-user', '--user', '0', packageName]);

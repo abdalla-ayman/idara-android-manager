@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electron', {
     getPackages: (opts) => ipcRenderer.invoke('adb:getPackages', opts),
     uninstall: (opts) => ipcRenderer.invoke('adb:uninstall', opts),
     restore: (opts) => ipcRenderer.invoke('adb:restore', opts),
+    getRestorable: (opts) => ipcRenderer.invoke('adb:getRestorable', opts),
     disable: (opts) => ipcRenderer.invoke('adb:disable', opts),
     enable: (opts) => ipcRenderer.invoke('adb:enable', opts),
     disconnect: (opts) => ipcRenderer.invoke('adb:disconnect', opts),

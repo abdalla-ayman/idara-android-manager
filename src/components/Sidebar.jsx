@@ -1,15 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../App';
-import { Smartphone, RotateCcw, Settings, Wifi, WifiOff } from 'lucide-react';
 
 export default function Sidebar() {
   const { t } = useTranslation();
-  const { currentPage, setCurrentPage, deviceConnected } = useApp();
+  const { currentPage, setCurrentPage, deviceConnected, restorableCount } = useApp();
 
   const navItems = [
-    { id: 'apps', icon: <Smartphone size={20} />, label: t('nav.apps') },
-    { id: 'restore', icon: <RotateCcw size={20} />, label: t('nav.restore') },
-    { id: 'settings', icon: <Settings size={20} />, label: t('nav.settings') },
+    { id: 'apps',     label: t('nav.apps') },
+    { id: 'restore',  label: t('nav.restore'), badge: restorableCount > 0 ? restorableCount : null },
+    { id: 'settings', label: t('nav.settings') },
   ];
 
   return (
@@ -28,11 +27,14 @@ export default function Sidebar() {
         {navItems.map((item) => (
           <button
             key={item.id}
-            className={`sidebar__link ${currentPage === item.id ? 'sidebar__link--active' : ''}`}
+            className={`sidebar__link${currentPage === item.id ? ' sidebar__link--active' : ''}`}
             onClick={() => setCurrentPage(item.id)}
           >
-            <span className="sidebar__link-icon">{item.icon}</span>
-            <span>{item.label}</span>
+            <span className="sidebar__link-icon" aria-hidden="true" />
+            <span style={{ flex: 1 }}>{item.label}</span>
+            {item.badge != null && (
+              <span className="sidebar__badge">{item.badge}</span>
+            )}
           </button>
         ))}
       </nav>
@@ -40,11 +42,6 @@ export default function Sidebar() {
       <div className="sidebar__status">
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <span className={`sidebar__status-dot ${deviceConnected ? 'sidebar__status-dot--connected' : 'sidebar__status-dot--disconnected'}`} />
-          {deviceConnected ? (
-            <Wifi size={14} style={{ marginRight: 6, color: 'var(--success-400)' }} />
-          ) : (
-            <WifiOff size={14} style={{ marginRight: 6, color: 'var(--danger-400)' }} />
-          )}
           <span className="sidebar__status-text">
             {deviceConnected ? t('setup.connected') : t('setup.notConnected')}
           </span>

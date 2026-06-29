@@ -19,6 +19,7 @@
     "build:macos": "vite build && electron-builder --mac",
     "build:linux": "vite build && electron-builder --linux",
     "build:all": "vite build && electron-builder -mwl",
+    "build:release": "CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:linux && CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:windows",
     "lint": "eslint .",
     "preview": "vite preview"
   },
