@@ -2,6 +2,7 @@
   <img src="public/icon.png" width="96" alt="إدارة" />
   <h1>إدارة — Android Manager</h1>
   <p>A desktop app to safely <b>uninstall</b>, <b>disable</b>, and <b>restore</b> system apps on your Android device over ADB — no root required.</p>
+  <a href="https://idara-website.vercel.app/">🌐 idara-website.vercel.app</a>
 </div>
 
 ---
