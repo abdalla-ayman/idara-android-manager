@@ -117,6 +117,15 @@ const mockApi = {
       d.deletions = (d.deletions || []).filter((x) => x.package !== packageName);
       writeStore(d); return { success: true };
     },
+    startTimer: async (packageName) => {
+      const d = readStore();
+      const idx = (d.deletions || []).findIndex((x) => x.package === packageName);
+      if (idx !== -1 && d.deletions[idx].isLocked && !d.deletions[idx].lockExpiresAt) {
+        d.deletions[idx].lockExpiresAt = Date.now() + (d.deletions[idx].recoveryMs || 86400000);
+        writeStore(d);
+      }
+      return { success: true };
+    },
     clearHistory: async () => {
       const d = readStore();
       d.deletions = (d.deletions || []).filter((x) => x.status === 'deleted');

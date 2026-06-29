@@ -330,6 +330,15 @@ function registerIpcHandlers() {
     store.set('deletions', deletions.filter((d) => d.package !== packageName));
     return { success: true };
   });
+  ipcMain.handle('deletion:startTimer', (_e, { packageName }) => {
+    const deletions = store.get('deletions') || [];
+    const idx = deletions.findIndex((d) => d.package === packageName);
+    if (idx !== -1 && deletions[idx].isLocked && !deletions[idx].lockExpiresAt) {
+      deletions[idx].lockExpiresAt = Date.now() + (deletions[idx].recoveryMs || 86400000);
+      store.set('deletions', deletions);
+    }
+    return { success: true };
+  });
   ipcMain.handle('deletion:clearHistory', () => {
     // Keep still-uninstalled apps (so they remain restorable); drop the rest.
     const deletions = store.get('deletions') || [];

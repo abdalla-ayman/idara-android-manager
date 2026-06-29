@@ -166,7 +166,7 @@ export default function AppList() {
             await api.deletion.save({
               package: app.package, name: app.name, isSystem: app.isSystem,
               isLocked,
-              lockExpiresAt: isLocked ? Date.now() + hours * 3600 * 1000 : null,
+              lockExpiresAt: null,
               recoveryMs: isLocked ? hours * 3600 * 1000 : null,
             });
           }

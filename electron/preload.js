@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('electron', {
     getAll: () => ipcRenderer.invoke('deletion:getAll'),
     updateStatus: (packageName, status) => ipcRenderer.invoke('deletion:updateStatus', { packageName, status }),
     remove: (packageName) => ipcRenderer.invoke('deletion:remove', { packageName }),
+    startTimer: (packageName) => ipcRenderer.invoke('deletion:startTimer', { packageName }),
     clearHistory: () => ipcRenderer.invoke('deletion:clearHistory'),
   },
 });

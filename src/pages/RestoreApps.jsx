@@ -95,11 +95,28 @@ export default function RestoreApps() {
     if (!deviceConnected) { showToast(t('device.noneTitle'), 'warning'); return; }
 
     const targets = restorableApps.filter((a) => selected.has(a.package));
-    const hasLocked = targets.some((a) => {
+
+    // Start the timer for any locked app that hasn't had a restore attempt yet
+    const pendingLock = targets.filter((a) => {
       const meta = deletionMeta[a.package];
-      return meta?.isLocked && getTimeRemaining(meta.lockExpiresAt);
+      return meta?.isLocked && !meta.lockExpiresAt;
     });
-    if (hasLocked) {
+    if (pendingLock.length > 0) {
+      await Promise.all(pendingLock.map((a) => api.deletion.startTimer(a.package)));
+      await load(); // refresh meta so timers are visible
+    }
+
+    // After starting timers, check if any are still within their lock window
+    const nowTs = Date.now();
+    const hasActiveLock = targets.some((a) => {
+      const meta = deletionMeta[a.package];
+      if (!meta?.isLocked) return false;
+      // pendingLock apps just got their timer set — treat as locked
+      if (pendingLock.find((p) => p.package === a.package)) return true;
+      return meta.lockExpiresAt && meta.lockExpiresAt > nowTs;
+    });
+
+    if (hasActiveLock) {
       if (await api.password.exists()) { setShowPasswordModal(true); return; }
       showToast(t('restore.locked'), 'warning');
       return;
@@ -179,8 +196,9 @@ export default function RestoreApps() {
             <div className="app-grid">
               {restorableApps.map((app, i) => {
                 const meta = deletionMeta[app.package];
-                const remaining = meta?.isLocked ? getTimeRemaining(meta.lockExpiresAt) : null;
-                const isLocked = !!remaining;
+                const timerStarted = meta?.isLocked && !!meta.lockExpiresAt;
+                const remaining = timerStarted ? getTimeRemaining(meta.lockExpiresAt) : null;
+                const isLocked = meta?.isLocked && (!timerStarted || !!remaining);
                 const isSel = selected.has(app.package);
                 const trackedByApp = !!meta;
 
@@ -198,7 +216,7 @@ export default function RestoreApps() {
                     <div className="app-card__info">
                       <div className="app-card__name">{app.name}</div>
                       <div className="app-card__package">{app.package}</div>
-                      {isLocked && (
+                      {isLocked && remaining && (
                         <div className="app-card__timer">
                           <Clock size={12} />
                           {remaining.hours}h {remaining.minutes}m {t('restore.remaining')}
