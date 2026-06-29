@@ -1,0 +1,91 @@
+{
+  "name": "idara",
+  "productName": "إدارة",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Desktop application to safely manage, uninstall, and restore system apps on Android devices via ADB",
+  "homepage": "https://github.com/abdalla-ayman/idara-android-manager",
+  "author": {
+    "name": "Abdalla Ayman",
+    "email": "abdallaaymanshandi3@gmail.com"
+  },
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "dev:electron": "concurrently \"vite\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
+    "build": "vite build",
+    "build:electron": "vite build && electron-builder",
+    "build:windows": "vite build && electron-builder --win",
+    "build:macos": "vite build && electron-builder --mac",
+    "build:linux": "vite build && electron-builder --linux",
+    "build:all": "vite build && electron-builder -mwl",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "build": {
+    "appId": "com.idara.app",
+    "productName": "إدارة",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "adb/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "adb/",
+        "to": "adb/",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "zip", "arch": ["x64"] }
+      ],
+      "icon": "public/icon.png"
+    },
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "public/icon.png"
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] },
+        { "target": "tar.gz", "arch": ["x64"] }
+      ],
+      "icon": "public/icon.png"
+    }
+  },
+  "dependencies": {
+    "electron-store": "^11.0.2",
+    "framer-motion": "^12.40.0",
+    "i18next": "^26.2.0",
+    "lucide-react": "^1.16.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-i18next": "^17.0.8",
+    "react-router-dom": "^7.15.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^9.2.1",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "vite": "^8.0.12",
+    "wait-on": "^9.0.10"
+  }
+}

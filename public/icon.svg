@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="asamBg" x1="40" y1="40" x2="472" y2="472" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9333ff"/>
+      <stop offset="0.55" stop-color="#7c1aff"/>
+      <stop offset="1" stop-color="#00d4ff"/>
+    </linearGradient>
+    <linearGradient id="asamShine" x1="256" y1="40" x2="256" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- App tile -->
+  <rect x="40" y="40" width="432" height="432" rx="108" fill="url(#asamBg)"/>
+  <rect x="40" y="40" width="432" height="432" rx="108" fill="url(#asamShine)"/>
+
+  <!-- "A" monogram -->
+  <g fill="none" stroke="#ffffff" stroke-width="46" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M164 380 L256 138 L348 380"/>
+    <path d="M201 310 L311 310"/>
+  </g>
+
+  <!-- manage accent dots -->
+  <circle cx="256" cy="138" r="13" fill="#00e0ff"/>
+</svg>
